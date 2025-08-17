@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wally Log & Stats Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+        .dark .custom-scrollbar::-webkit-scrollbar-track { background: #2d3748; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a5568; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #718096; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col items-center min-h-screen py-6 px-4">
+    <div class="w-full max-w-lg mx-auto space-y-8">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Session & PPH Plan</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="start-time-input" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Session Start Time</label>
+                        <input type="datetime-local" id="start-time-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="employee-count-input" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"># of Employees (DOP)</label>
+                        <input type="number" id="employee-count-input" value="1" min="1" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="total-packages-input" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Total Packages (Plan)</label>
+                        <input type="number" id="total-packages-input" value="100" min="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-center content-start">
+                    <div>
+                        <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400" id="stats-total">0</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Completions</p>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400" id="stats-hourly">0</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Completions This Hour</p>
+                    </div>
+                    <div class="col-span-2 mt-6">
+                         <button id="calculate-pph-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">Calculate & Log PPH</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Hourly PPH Log</h2>
+            <div id="hourly-pph-log" class="space-y-2"></div>
+            <p id="empty-hourly-log-message" class="text-sm text-gray-400 dark:text-gray-500 text-center py-4">Calculate PPH to see hourly logs.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+                <h2 class="text-xl font-bold text-center text-gray-900 dark:text-white mb-1">Step 1: Log Inbound</h2>
+                <div class="space-y-4 mt-4">
+                    <div>
+                        <label for="inbound-wally-num" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Wally #</label>
+                        <input type="text" id="inbound-wally-num" placeholder="e.g., T-12345" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="inbound-door-select" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Door #</label>
+                        <select id="inbound-door-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option value="9">Door 9</option><option value="10">Door 10</option><option value="11">Door 11</option><option value="12">Door 12</option><option value="13">Door 13</option><option value="14">Door 14</option><option value="15">Door 15</option><option value="16">Door 16</option>
+                        </select>
+                    </div>
+                    <button id="log-inbound-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">Log Inbound Wally</button>
+                    <p id="inbound-error-message" class="text-red-500 text-sm mt-2 text-center hidden font-semibold"></p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+                <h2 class="text-xl font-bold text-center text-gray-900 dark:text-white mb-1">Step 2: Mark Completed</h2>
+                 <div class="mt-4">
+                    <label for="pending-wally-select" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Pending Wallies</label>
+                    <select id="pending-wally-select" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select>
+                </div>
+                <button id="complete-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 mt-4">Mark as Completed</button>
+                <p id="status-message" class="text-green-600 dark:text-green-400 font-medium mt-4 text-center hidden"></p>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">Completion Log</h2>
+                 <button id="clear-log-btn" class="text-sm text-red-500 hover:underline focus:outline-none">Clear Log</button>
+            </div>
+            <div id="log-list" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
+            <p id="empty-log-message" class="text-sm text-gray-400 dark:text-gray-500 text-center py-4 hidden">No completions yet.</p>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Are you sure?</h3>
+            <p id="modal-text" class="text-sm text-gray-600 dark:text-gray-300 mb-6">This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button id="modal-cancel-btn" class="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition">Cancel</button>
+                <button id="modal-confirm-btn" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startTimeInput = document.getElementById('start-time-input');
+        const employeeCountInput = document.getElementById('employee-count-input');
+        const totalPackagesInput = document.getElementById('total-packages-input');
+        const statsTotal = document.getElementById('stats-total');
+        const statsHourly = document.getElementById('stats-hourly');
+        const calculatePPHBtn = document.getElementById('calculate-pph-btn');
+        const hourlyPPHLog = document.getElementById('hourly-pph-log');
+        const emptyHourlyLogMessage = document.getElementById('empty-hourly-log-message');
+        const logInboundBtn = document.getElementById('log-inbound-btn');
+        const inboundWallyNum = document.getElementById('inbound-wally-num');
+        const inboundDoorSelect = document.getElementById('inbound-door-select');
+        const inboundErrorMessage = document.getElementById('inbound-error-message');
+        const completeBtn = document.getElementById('complete-btn');
+        const pendingWallySelect = document.getElementById('pending-wally-select');
+        const statusMessage = document.getElementById('status-message');
+        const logList = document.getElementById('log-list');
+        const clearLogBtn = document.getElementById('clear-log-btn');
+        const emptyLogMessage = document.getElementById('empty-log-message');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const modalText = document.getElementById('modal-text');
+        let modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
+        const LOG_KEY = 'wallyFullLog';
+        const PPH_LOG_KEY = 'wallyPPHLog';
+        const START_TIME_KEY = 'wallyStartTime';
+        const EMPLOYEE_COUNT_KEY = 'wallyEmployeeCount';
+        const TOTAL_PACKAGES_KEY = 'wallyTotalPackages';
+
+        const formatTime = (isoString, style = 'short') => {
+            if (!isoString) return null;
+            const options = style === 'short' 
+                ? { dateStyle: 'short', timeStyle: 'short' } 
+                : { timeStyle: 'short' };
+            return new Date(isoString).toLocaleString(undefined, options);
+        };
+
+        const calculateCompletionStats = () => {
+            const log = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+            const startTimeValue = localStorage.getItem(START_TIME_KEY);
+            if (!startTimeValue) {
+                statsTotal.textContent = 'N/A';
+                statsHourly.textContent = 'N/A';
+                return;
+            }
+            
+            const startTime = new Date(startTimeValue);
+            const now = new Date();
+            const startOfCurrentHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+            const completedSinceStart = log.filter(entry => entry.completionTime && new Date(entry.completionTime) >= startTime);
+            const completedThisHour = completedSinceStart.filter(entry => new Date(entry.completionTime) >= startOfCurrentHour);
+            statsTotal.textContent = completedSinceStart.length;
+            statsHourly.textContent = completedThisHour.length;
+        };
+        
+        const renderPPHLog = () => {
+            const pphLog = JSON.parse(localStorage.getItem(PPH_LOG_KEY)) || [];
+            const startTimeValue = localStorage.getItem(START_TIME_KEY);
+            hourlyPPHLog.innerHTML = '';
+
+            if (pphLog.length === 0 || !startTimeValue) {
+                emptyHourlyLogMessage.classList.remove('hidden');
+                return;
+            }
+            emptyHourlyLogMessage.classList.add('hidden');
+
+            const startTime = new Date(startTimeValue);
+
+            pphLog.forEach(logEntry => {
+                const hourStart = new Date(startTime.getTime() + logEntry.hourIndex * 60 * 60 * 1000);
+                const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
+
+                const logEntryDiv = document.createElement('div');
+                logEntryDiv.className = 'flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md';
+                logEntryDiv.innerHTML = `
+                    <span><strong>Hour ${logEntry.hourIndex + 1}</strong> (${formatTime(hourStart, 'timeOnly')} - ${formatTime(hourEnd, 'timeOnly')})</span>
+                    <strong class="text-teal-600 dark:text-teal-400">${logEntry.pph.toFixed(1)} PPH</strong>
+                `;
+                hourlyPPHLog.appendChild(logEntryDiv);
+            });
+        };
+
+        const renderLog = () => {
+            const log = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+            logList.innerHTML = ''; 
+
+            if (log.length === 0) {
+                emptyLogMessage.classList.remove('hidden');
+                logList.classList.add('hidden');
+                return;
+            }
+
+            emptyLogMessage.classList.add('hidden');
+            logList.classList.remove('hidden');
+
+            const groupedByDoor = log.reduce((acc, entry) => {
+                const door = entry.door;
+                if (!acc[door]) acc[door] = [];
+                acc[door].push(entry);
+                return acc;
+            }, {});
+
+            const sortedDoors = Object.keys(groupedByDoor).sort((a, b) => a - b);
+
+            sortedDoors.forEach(door => {
+                const doorGroupDiv = document.createElement('div');
+                doorGroupDiv.className = 'mb-6';
+
+                const header = document.createElement('h3');
+                header.className = 'text-lg font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2 mb-3';
+                header.textContent = `Door ${door}`;
+                doorGroupDiv.appendChild(header);
+
+                const entriesForDoor = groupedByDoor[door];
+                entriesForDoor.sort((a, b) => new Date(a.inboundTime) - new Date(b.inboundTime));
+
+                const entriesListContainer = document.createElement('div');
+                entriesListContainer.className = 'space-y-3';
+
+                entriesForDoor.forEach(entry => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm';
+                    const inboundTimeFormatted = formatTime(entry.inboundTime);
+                    const completionTimeFormatted = formatTime(entry.completionTime);
+
+                    let completionHTML = completionTimeFormatted 
+                        ? `<span class="text-green-600 dark:text-green-400"><strong>Completed:</strong> ${completionTimeFormatted}</span>`
+                        : `<span class="text-yellow-600 dark:text-yellow-400"><strong>Status:</strong> Pending</span>`;
+
+                    entryDiv.innerHTML = `
+                        <div class="font-bold text-base mb-2"><span>Wally #${entry.id}</span></div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-blue-600 dark:text-blue-400"><strong>Inbound:</strong> ${inboundTimeFormatted}</span>
+                            ${completionHTML}
+                        </div>`;
+                    entriesListContainer.appendChild(entryDiv);
+                });
+
+                doorGroupDiv.appendChild(entriesListContainer);
+                logList.appendChild(doorGroupDiv);
+            });
+        };
+
+        const populatePendingWallies = () => {
+            const log = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+            const pending = log.filter(entry => !entry.completionTime);
+            pendingWallySelect.innerHTML = '';
+
+            if (pending.length === 0) {
+                pendingWallySelect.innerHTML = '<option disabled selected>No pending Wallies</option>';
+                completeBtn.disabled = true;
+            } else {
+                pending.forEach(entry => {
+                    const option = document.createElement('option');
+                    option.value = entry.id;
+                    option.textContent = `Wally #${entry.id} (Door ${entry.door})`;
+                    pendingWallySelect.appendChild(option);
+                });
+                completeBtn.disabled = false;
+            }
+        };
+
+        const updateAll = () => {
+            renderLog();
+            populatePendingWallies();
+            calculateCompletionStats();
+            renderPPHLog();
+        };
+
+        const showConfirmationModal = (text, confirmAction) => {
+            modalText.textContent = text;
+            const newConfirmBtn = modalConfirmBtn.cloneNode(true);
+            modalConfirmBtn.parentNode.replaceChild(newConfirmBtn, modalConfirmBtn);
+            modalConfirmBtn = newConfirmBtn;
+            modalConfirmBtn.addEventListener('click', () => {
+                confirmAction();
+                confirmationModal.classList.add('hidden');
+            });
+            confirmationModal.classList.remove('hidden');
+        };
+
+        startTimeInput.addEventListener('change', () => {
+            localStorage.setItem(START_TIME_KEY, startTimeInput.value);
+        });
+        employeeCountInput.addEventListener('change', () => {
+            localStorage.setItem(EMPLOYEE_COUNT_KEY, employeeCountInput.value);
+        });
+        totalPackagesInput.addEventListener('change', () => {
+            localStorage.setItem(TOTAL_PACKAGES_KEY, totalPackagesInput.value);
+        });
+
+        calculatePPHBtn.addEventListener('click', () => {
+            const startTimeValue = localStorage.getItem(START_TIME_KEY);
+            const employeeCount = parseInt(localStorage.getItem(EMPLOYEE_COUNT_KEY), 10);
+            const totalPackages = parseInt(localStorage.getItem(TOTAL_PACKAGES_KEY), 10);
+
+            if (!startTimeValue || !employeeCount || !totalPackages) {
+                alert('Please ensure Start Time, Employee Count, and Total Packages are set.');
+                return;
+            }
+
+            const startTime = new Date(startTimeValue);
+            const now = new Date();
+            const elapsedMilliseconds = now - startTime;
+            
+            if (elapsedMilliseconds < 0) {
+                alert('Session Start Time cannot be in the future.');
+                return;
+            }
+            
+            const elapsedHours = elapsedMilliseconds / (1000 * 60 * 60);
+            if (elapsedHours === 0) {
+                alert("Not enough time has passed to calculate PPH.");
+                return;
+            }
+            const totalEmployeeHours = elapsedHours * employeeCount;
+            const pph = totalPackages / totalEmployeeHours;
+
+            const currentHourIndex = Math.floor(elapsedMilliseconds / (1000 * 60 * 60));
+
+            const pphLog = JSON.parse(localStorage.getItem(PPH_LOG_KEY)) || [];
+            const existingLogIndex = pphLog.findIndex(entry => entry.hourIndex === currentHourIndex);
+
+            const newLogEntry = { hourIndex: currentHourIndex, pph: pph };
+
+            if (existingLogIndex > -1) {
+                pphLog[existingLogIndex] = newLogEntry;
+            } else {
+                pphLog.push(newLogEntry);
+            }
+
+            pphLog.sort((a, b) => a.hourIndex - b.hourIndex);
+            localStorage.setItem(PPH_LOG_KEY, JSON.stringify(pphLog));
+            renderPPHLog();
+        });
+
+        logInboundBtn.addEventListener('click', () => {
+            const wallyId = inboundWallyNum.value.trim();
+            const selectedDoor = inboundDoorSelect.value;
+            inboundErrorMessage.classList.add('hidden');
+
+            if (!wallyId) { 
+                inboundErrorMessage.textContent = 'Please enter a Wally #.';
+                inboundErrorMessage.classList.remove('hidden');
+                setTimeout(() => inboundErrorMessage.classList.add('hidden'), 3000);
+                return; 
+            }
+
+            const log = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+            const isDoorOccupied = log.some(entry => entry.door === selectedDoor && !entry.completionTime);
+            if (isDoorOccupied) {
+                inboundErrorMessage.textContent = `Door ${selectedDoor} is already occupied.`;
+                inboundErrorMessage.classList.remove('hidden');
+                setTimeout(() => inboundErrorMessage.classList.add('hidden'), 3000);
+                return;
+            }
+
+            if(log.some(entry => entry.id === wallyId)) { 
+                inboundErrorMessage.textContent = 'This Wally # already exists.';
+                inboundErrorMessage.classList.remove('hidden');
+                setTimeout(() => inboundErrorMessage.classList.add('hidden'), 3000);
+                return; 
+            }
+
+            log.push({
+                id: wallyId,
+                door: selectedDoor,
+                inboundTime: new Date().toISOString(),
+                completionTime: null
+            });
+            localStorage.setItem(LOG_KEY, JSON.stringify(log));
+            inboundWallyNum.value = '';
+            updateAll();
+        });
+
+        completeBtn.addEventListener('click', () => {
+            const selectedWallyId = pendingWallySelect.value;
+            if (!selectedWallyId) { return; }
+
+            const log = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+            const entry = log.find(e => e.id === selectedWallyId);
+
+            if (entry) {
+                const confirmationText = `Are you sure you want to mark Door ${entry.door} (Wally #${entry.id}) as complete?`;
+                const confirmAction = () => {
+                    const currentLog = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+                    const entryIndex = currentLog.findIndex(e => e.id === selectedWallyId);
+                    if (entryIndex !== -1) {
+                        currentLog[entryIndex].completionTime = new Date().toISOString();
+                        localStorage.setItem(LOG_KEY, JSON.stringify(currentLog));
+                        updateAll();
+                        statusMessage.textContent = `✅ Wally #${selectedWallyId} completed!`;
+                        statusMessage.classList.remove('hidden');
+                        setTimeout(() => { statusMessage.classList.add('hidden'); }, 3000);
+                    }
+                };
+                showConfirmationModal(confirmationText, confirmAction);
+            }
+        });
+
+        clearLogBtn.addEventListener('click', () => {
+            const confirmationText = 'Are you sure you want to permanently delete the entire log? This action cannot be undone.';
+            const confirmAction = () => {
+                localStorage.removeItem(LOG_KEY);
+                localStorage.removeItem(PPH_LOG_KEY);
+                updateAll();
+            };
+            showConfirmationModal(confirmationText, confirmAction);
+        });
+
+        modalCancelBtn.addEventListener('click', () => {
+            confirmationModal.classList.add('hidden');
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let savedStartTime = localStorage.getItem(START_TIME_KEY);
+            if (!savedStartTime) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                savedStartTime = now.toISOString().slice(0, 16);
+                localStorage.setItem(START_TIME_KEY, savedStartTime);
+            }
+            startTimeInput.value = savedStartTime;
+            employeeCountInput.value = localStorage.getItem(EMPLOYEE_COUNT_KEY) || 1;
+            totalPackagesInput.value = localStorage.getItem(TOTAL_PACKAGES_KEY) || 100;
+            updateAll();
+        });
+    </script>
+</body>
+</html>
